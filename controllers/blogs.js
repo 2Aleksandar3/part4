@@ -15,9 +15,9 @@ blogsRouter.get('/',async (request, response) => {
   }
   })
 
-  const authenticate = [middleware.tokenExtractor, middleware.userExtractor];
   
-  blogsRouter.post('/', authenticate ,async (request, response,next) => {
+  
+  blogsRouter.post('/', middleware.userExtractor ,async (request, response,next) => {
     
     const body = request.body
 
@@ -51,7 +51,7 @@ blogsRouter.get('/',async (request, response) => {
  
   })
 
-  blogsRouter.delete('/:id', authenticate , async (request, response, next) => {
+  blogsRouter.delete('/:id', middleware.userExtractor , async (request, response, next) => {
 
 
     try {
@@ -60,9 +60,11 @@ blogsRouter.get('/',async (request, response) => {
       if (!blog) {
         return response.status(404).json({ error: 'Blog not found' });
       }
+      console.log('blog._id.toString()',blog)
+      console.log('request user id to string',request.user)
   
       // Check if the user is the creator of the blog
-      if (blog.user.toString() !== request.userId.toString()) {
+      if (blog.user.toString() !== request.user._id.toString()) {
         return response.status(403).json({ error: 'Permission denied' });
       }
   
@@ -91,6 +93,20 @@ blogsRouter.get('/',async (request, response) => {
       response.json(updatedBlog)
     })
     .catch(error => next(error))
+    })
+
+    
+
+    blogsRouter.get('/:id', (request, response, next) => {
+      Blog.findById(request.params.id)
+        .then(blog => {
+          if (blog) {
+            response.json(blog)
+          } else {
+            response.status(404).end()
+          }
+        })
+        .catch(error => next(error))
     })
 
   module.exports = blogsRouter

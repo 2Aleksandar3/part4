@@ -13,10 +13,26 @@ const api = supertest(app)
 
 beforeEach(async () => {
   await Blog.deleteMany({})
-  let blogObject = new Blog(helper.initialBlogs[0])
-  await blogObject.save()
-  blogObject = new Blog(helper.initialBlogs[1])
-  await blogObject.save()
+  await User.deleteMany({});
+
+  let user = await User.findOne({ username: 'root' });
+
+  if (!user) {
+    // Create a new user if one does not exist
+    user = new User({ username: 'root' });
+    user.passwordHash = await bcrypt.hash('sekret', 10); 
+    await user.save();
+  }
+
+  // Assign the single user to all blogs
+  const blogsWithUser = initialBlogs.map(blog => ({
+    ...blog,
+    user: user._id, 
+  }));
+
+  // Save blogs with user
+  const blogPromises = blogsWithUser.map(blog => new Blog(blog).save());
+  await Promise.all(blogPromises);
   
 })
 
@@ -68,10 +84,20 @@ test('new blog created successfully',async ()=>{
     url: 'jake',
     likes: 74
   }
+  
+  const testLogin = await api
+  .post('/api/login') 
+  .send({ username: "root", password: "sekret" }) 
+  .expect(200);
+
+  console.log('Login response:', testLogin.body);
+
+  const authToken = testLogin.body.token;
 
   await api
     .post('/api/blogs')
     .send(newBlog)
+    .set('Authorization', `Bearer ${authToken}`)
     .expect(201)
     .expect('Content-Type', /application\/json/)
 
@@ -90,9 +116,19 @@ test('likes are missing so the value is 0',async ()=>{
     url: 'rigby'
   }
 
+  const testLogin = await api
+  .post('/api/login') 
+  .send({ username: "root", password: "sekret" }) 
+  .expect(200);
+
+  console.log('Login response:', testLogin.body);
+
+  const authToken = testLogin.body.token;
+
   await api
     .post('/api/blogs')
     .send(newBlog)
+    .set('Authorization', `Bearer ${authToken}`)
     .expect(201)
     .expect('Content-Type', /application\/json/)
 
@@ -132,8 +168,18 @@ test('deletion of a blog', async ()=>{
 
       console.log(blogToDelete.id,'ililili')
 
+      const testLogin = await api
+  .post('/api/login') 
+  .send({ username: "root", password: "sekret" }) 
+  .expect(200);
+
+  console.log('Login response:', testLogin.body);
+
+  const authToken = testLogin.body.token;
+
       await api
         .delete(`/api/blogs/${blogToDelete.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(204)
 
         const blogsAtEnd = await helper.blogsInDb()
@@ -149,25 +195,32 @@ test('updating of a blog', async ()=>{
   
  
   const response = await api.get('/api/blogs')
-  const blogToUpdate= response.body[0]
+  const blogToUpdate= response.body[1]
 
-  console.log('ID of blog to update:', blogToUpdate.id)
+  console.log('ID of blog to update:', blogToUpdate)
+
+  const testLogin = await api
+  .post('/api/login') 
+  .send({ username: "root", password: "sekret" }) 
+  .expect(200);
+
+  console.log('Login response:', testLogin.body);
+
+  const authToken = testLogin.body.token;
 
   await api
   .get(`/api/blogs/${blogToUpdate.id}`)
+  
   .expect(200)
 
   await api
     .put(`/api/blogs/${blogToUpdate.id}`)
+    .set('Authorization', `Bearer ${authToken}`)
     .send({ likes: 480 })
     .expect(200)
 
     const updatedResponse = await api.get('/api/blogs')
   const updatedBlog = updatedResponse.body.find(blog => blog.id === blogToUpdate.id)
-
-  /*if(updatedBlog.likes==480){
-    console.log('its ok')
-  }else{console.log('not ok')}*/
 
  
 })

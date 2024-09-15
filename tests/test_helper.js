@@ -1,22 +1,27 @@
 const Blog=require ('../models/blog')
 const User = require('../models/user')
 
+
+
+
 const initialBlogs = [
     {
       title: 'tekken 7',
       author: 'Jme',
       url: 'asdf.com',
-      likes: 64
+      likes: 64,
+      user:null
     },
     {
       title: 'street fighter',
       author: 'D double e',
       url: 'asgd.com',
-      likes: 90
+      likes: 90,
+      user:null
     },
   ]
 
-
+  
   const nonExistingId = async () => {
     const blog = new blog({ title: 'willremovethissoon',  author: 'SK',
         url: 'bafa.com',})
@@ -33,7 +38,10 @@ const initialBlogs = [
 
   const usersInDb = async () => {
     const users = await User.find({})
+    console.log('users test helper',users)
     return users.map(u => u.toJSON())
+
+    
   }
   
   

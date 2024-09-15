@@ -1,4 +1,6 @@
 const logger = require('./logger')
+const jwt = require('jsonwebtoken')
+const User = require('../models/user')
 
 const requestLogger = (request, response, next) => {
   logger.info('Method:', request.method)
@@ -47,15 +49,28 @@ const tokenExtractor = (request, response, next) => {
   next(); 
 };
 
-const userExtractor = (request, response, next) => {
+const userExtractor =async (request, response, next) => {
   const token = request.token;
-  console.log('Token for Verification:', token);
+
   if (token) {
     try {
-      const decodedToken = jwt.verify(token, process.env.SECRET); // Ensure SECRET is set in your environment
-      request.userId = decodedToken.id; // Assuming the ID is in the token payload
-      next();
+      const decodedToken = jwt.verify(token, process.env.SECRET);
+
+      if (decodedToken && decodedToken.id) {
+        // Find the user by the ID from the token
+        const user = await User.findById(decodedToken.id);
+
+        if (user) {
+          request.user = user; // Attach the user to the request object
+          next(); // Proceed to the next middleware or route handler
+        } else {
+          response.status(404).json({ error: 'User not found' });
+        }
+      } else {
+        response.status(401).json({ error: 'Token does not contain a valid user ID' });
+      }
     } catch (error) {
+      console.error('Token verification failed:', error); // Log the error for debugging
       response.status(401).json({ error: 'Token is invalid' });
     }
   } else {
